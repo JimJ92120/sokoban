@@ -15,6 +15,7 @@ pub struct Sokoban {
     player_position: Position,
     board: Board,
     is_complete: bool,
+    move_count: usize,
 }
 
 // missing checks for position in range
@@ -24,6 +25,7 @@ impl Sokoban {
             player_position: [4, 4],
             board: Sokoban::new_board(),
             is_complete: false,
+            move_count: 0,
         }
     }
 
@@ -38,6 +40,10 @@ impl Sokoban {
 
     pub fn is_complete(&self) -> bool {
         self.is_complete.clone()
+    }
+
+    pub fn move_count(&self) -> usize {
+        self.move_count.clone()
     }
 
     pub fn objects_positions(&self) -> [Vec<Position>; 3] {
@@ -126,6 +132,7 @@ impl Sokoban {
         }
 
         self.player_position = [new_position[0], new_position[1]];
+        self.move_count += 1;
 
         true
     }

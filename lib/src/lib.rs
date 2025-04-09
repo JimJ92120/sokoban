@@ -37,6 +37,11 @@ impl Game {
     }
 
     #[wasm_bindgen(getter)]
+    pub fn move_count(&self) -> JsValue {
+        serde_wasm_bindgen::to_value(&self.sokoban.move_count().clone()).unwrap()
+    }
+
+    #[wasm_bindgen(getter)]
     pub fn objects_positions(&self) -> JsValue {
         serde_wasm_bindgen::to_value(&self.sokoban.objects_positions().clone()).unwrap()
     }
