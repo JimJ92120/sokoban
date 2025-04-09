@@ -96,11 +96,11 @@ class Renderer2D {
 
     [...Array(dimension[1] - 1).keys()].map((rowIndex) => {
       this.context.moveTo(0, (rowIndex + 1) * resolution[1]);
-      this.context.lineTo(height, (rowIndex + 1) * resolution[1]);
+      this.context.lineTo(width, (rowIndex + 1) * resolution[1]);
 
       [...Array(dimension[0] - 1).keys()].map((columnIndex) => {
         this.context.moveTo((columnIndex + 1) * resolution[0], 0);
-        this.context.lineTo((columnIndex + 1) * resolution[0], width);
+        this.context.lineTo((columnIndex + 1) * resolution[0], height);
       });
     });
 
