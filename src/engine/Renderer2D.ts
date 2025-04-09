@@ -12,6 +12,7 @@ type RendererObject = {
   position: Vec2;
   data: Vec3[];
   color: Vec4;
+  texture?: CanvasImageSource;
   scale: Vec2;
   rotation: Vec3;
   type: RendererObjectType;
@@ -111,21 +112,50 @@ class Renderer2D {
     const { resolution } = this.options;
 
     Object.keys(this.objects).map((objectId) => {
-      const { position, data, color, scale, type, rotation } =
-        this.objects[objectId];
+      const _object = this.objects[objectId];
+      const { position, data, color, scale, type, rotation } = _object;
       const isLine = RendererObjectType.Lines === type;
+      let max: Vec2 = [0, 0];
 
       this.context[isLine ? "strokeStyle" : "fillStyle"] = this.rgba(color);
 
       this.context.beginPath();
       this.rotate(data, rotation).map((vertex, index) => {
-        this.context[0 === index ? "moveTo" : "lineTo"](
+        const _position: Vec2 = [
           position[0] * resolution[0] + vertex[0] * scale[0] * resolution[0],
-          position[1] * resolution[1] + vertex[1] * scale[1] * resolution[1]
+          position[1] * resolution[1] + vertex[1] * scale[1] * resolution[1],
+        ];
+
+        this.context[0 === index ? "moveTo" : "lineTo"](
+          _position[0],
+          _position[1]
         );
+
+        if (max[0] < _position[0]) {
+          max[0] = _position[0];
+        }
+
+        if (max[1] < _position[1]) {
+          max[1] = _position[1];
+        }
       });
 
       this.context[isLine ? "stroke" : "fill"]();
+
+      if (_object.texture) {
+        let _position: Vec2 = [
+          position[0] * resolution[0],
+          position[1] * resolution[1],
+        ];
+
+        this.context.drawImage(
+          _object.texture,
+          _position[0],
+          _position[1],
+          max[0] - _position[0],
+          max[1] - _position[1]
+        );
+      }
     });
   }
 

@@ -10,8 +10,25 @@ import Renderer2D, {
 } from "./engine/Renderer2D";
 import EventsManager, { EventObject } from "./engine/EventsManager";
 
+async function loadTextures(imageSources: string[]): Promise<Promise<any>[]> {
+  return await Promise.all(
+    imageSources.map(
+      (imageSrc) =>
+        new Promise((resolve) => {
+          const _image = new Image();
+          _image.src = imageSrc;
+          _image.addEventListener("load", () => {
+            console.log(`${_image.src} loaded`);
+
+            return resolve(_image);
+          });
+        })
+    )
+  );
+}
+
 window.addEventListener("load", () => {
-  init().then(() => {
+  init().then(async () => {
     const app = new App("app", "Sokoban");
     app.render();
 
@@ -19,6 +36,15 @@ window.addEventListener("load", () => {
     const game: Game = new Game();
 
     // data
+
+    const textures = await loadTextures([
+      "./block.png",
+      "./box.png",
+      "./player.png",
+    ]);
+    console.log(textures);
+    console.log("ok");
+
     const rendererOptions: RendererOptions = (() => {
       const width = 500;
       const height = 500;
@@ -28,7 +54,7 @@ window.addEventListener("load", () => {
       return {
         width,
         height,
-        backgroundColor: [200, 220, 220, 1],
+        backgroundColor: [255, 255, 255, 1],
         resolution: [width / columns, height / rows],
       };
     })();
@@ -43,6 +69,7 @@ window.addEventListener("load", () => {
         [1, 0, 0],
       ],
       color: [100, 100, 255, 1],
+      texture: await textures[2],
       scale: [1, 1],
       rotation: [0, 0, 0],
       type: RendererObjectType.Filled,
@@ -70,6 +97,7 @@ window.addEventListener("load", () => {
               return {
                 id: `block-${objectIndex}`,
                 color: [125, 125, 125, 1],
+                texture: textures[0],
                 ..._default,
               };
 
@@ -84,6 +112,7 @@ window.addEventListener("load", () => {
               return {
                 id: `box-${objectIndex}`,
                 color: [200, 150, 0, 1],
+                texture: textures[1],
                 ..._default,
               };
 
@@ -247,10 +276,11 @@ window.addEventListener("load", () => {
     // loop
     engine.start(() => {
       app.debug(
-        (game.board as number[][]).reduce(
-          (_result, row) => _result + row.join(" ") + "\n",
-          ""
-        )
+        `move count: ${game.move_count}\n\n` +
+          (game.board as number[][]).reduce(
+            (_result, row) => _result + row.join(" ") + "\n",
+            ""
+          )
       );
     });
   });
