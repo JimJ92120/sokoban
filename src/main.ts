@@ -38,9 +38,9 @@ window.addEventListener("load", () => {
     // data
 
     const textures = await loadTextures([
-      "./block.png",
-      "./box.png",
-      "./player.png",
+      "./assets/block.png",
+      "./assets/box.png",
+      "./assets/player.png",
     ]);
     console.log(textures);
     console.log("ok");
