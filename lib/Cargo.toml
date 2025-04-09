@@ -1,7 +1,7 @@
 # cargo-features = ["edition"]
 
 [package]
-name = "sudoku"
+name = "sokoban"
 description = ""
 version = "0.1.0"
 authors = ["You <you@example.com>"]
