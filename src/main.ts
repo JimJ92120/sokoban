@@ -1,6 +1,8 @@
 // @ts-ignore
 import init, { Game } from "../dist/lib";
 
+import { Vec2, Vec3, Vec4 } from "./type";
+
 import { App } from "./App";
 import Engine from "./engine";
 import Renderer2D, {
@@ -10,21 +12,129 @@ import Renderer2D, {
 } from "./engine/Renderer2D";
 import EventsManager, { EventObject } from "./engine/EventsManager";
 
-async function loadTextures(imageSources: string[]): Promise<Promise<any>[]> {
+type TextureData = {
+  id: string;
+  source: string;
+  $image?: HTMLImageElement;
+};
+async function loadTextures(
+  textureDataOptions: TextureData[]
+): Promise<TextureData[]> {
   return await Promise.all(
-    imageSources.map(
-      (imageSrc) =>
+    textureDataOptions.map(
+      (textureData) =>
         new Promise((resolve) => {
-          const _image = new Image();
-          _image.src = imageSrc;
-          _image.addEventListener("load", () => {
-            console.log(`${_image.src} loaded`);
+          const _resolve = () => resolve(textureData);
 
-            return resolve(_image);
-          });
-        })
+          if (!textureData.$image) {
+            textureData.$image = new Image();
+            textureData.$image.src = textureData.source;
+            textureData.$image.addEventListener("load", () => {
+              console.log(`${textureData.source} loaded`);
+              return _resolve();
+            });
+          } else {
+            return _resolve();
+          }
+        }) as Promise<TextureData>
     )
   );
+}
+
+function Square(): Vec3[] {
+  return [
+    [0, 0, 0],
+    [0, 1, 0],
+    [1, 1, 0],
+    [1, 0, 0],
+  ] as Vec3[];
+}
+
+type AllObjectsData = {
+  player: RendererObject;
+  blocks: RendererObject[];
+  targets: RendererObject[];
+  boxes: RendererObject[];
+  boxLines: RendererObject[];
+};
+type ColorsRecord = { [key: string]: Vec4 };
+type TextureDataRecord = { [key: string]: TextureData };
+function AllObjects(
+  playerPosition: Vec2,
+  blockPositions: Vec2[],
+  targetPositions: Vec2[],
+  boxPositions: Vec2[],
+  colors: ColorsRecord,
+  textures: TextureDataRecord
+): AllObjectsData {
+  console.log(textures);
+  const _default = {
+    data: Square(),
+    scale: [1, 1] as Vec2,
+    rotation: [0, 0, 0] as Vec3,
+    type: RendererObjectType.Filled,
+  };
+
+  const playerObject: RendererObject = {
+    ..._default,
+    id: "player",
+    position: playerPosition,
+    color: colors.player,
+    texture: textures.player.$image,
+  };
+
+  const blockObjects = blockPositions.map((position, blockIndex) => {
+    return {
+      ..._default,
+      position,
+      id: `block-${blockIndex}`,
+      color: colors.block,
+      texture: textures.block.$image,
+    };
+  });
+
+  const targetObjects = targetPositions.map((position, targetIndex) => {
+    return {
+      ..._default,
+      id: `target-${targetIndex}`,
+      position,
+      color: colors.target,
+    };
+  });
+
+  const boxObjects = boxPositions.map((position, boxIndex) => {
+    return {
+      id: `box-${boxIndex}`,
+      position,
+      color: colors.box,
+      texture: textures.box.$image,
+      ..._default,
+    };
+  });
+
+  const boxLineObjects: RendererObject[] = boxObjects.map(
+    (object, objectIndex) => {
+      return {
+        ...object,
+        id: `box-line-${objectIndex}`,
+        data: (() => {
+          const square = Square();
+
+          return [...square, square[0], square[2], square[1], square[3]];
+        })(),
+        color: colors.boxLine,
+        type: RendererObjectType.Lines,
+      } as RendererObject;
+    }
+  );
+
+  return {
+    player: playerObject,
+    blocks: blockObjects,
+    targets: targetObjects,
+    boxes: boxObjects,
+    boxLines: boxLineObjects,
+  };
 }
 
 window.addEventListener("load", () => {
@@ -36,12 +146,42 @@ window.addEventListener("load", () => {
     const game: Game = new Game();
 
     // data
+    const textures: TextureDataRecord = (
+      await loadTextures([
+        {
+          id: "player",
+          source: "./assets/player.png",
+        },
+        {
+          id: "block",
+          source: "./assets/block.png",
+        },
+        {
+          id: "box",
+          source: "./assets/box.png",
+        },
+      ])
+    ).reduce((_result, textureData) => {
+      _result[textureData.id] = textureData;
 
-    const textures = await loadTextures([
-      "./assets/block.png",
-      "./assets/box.png",
-      "./assets/player.png",
-    ]);
+      return _result;
+    }, {} as TextureDataRecord);
+    const colors: ColorsRecord = {
+      player: [100, 100, 255, 1], // blue
+      block: [125, 125, 125, 1], // grey
+      target: [0, 0, 0, 1], // black
+      box: [200, 150, 0, 1], // orange
+      boxLine: [0, 0, 0, 1],
+    };
+
+    const { player, blocks, targets, boxes, boxLines } = AllObjects(
+      game.player_position,
+      game.objects_positions[0],
+      game.objects_positions[1],
+      game.objects_positions[2],
+      colors,
+      textures
+    );
 
     const rendererOptions: RendererOptions = (() => {
       const width = 500;
@@ -56,85 +196,6 @@ window.addEventListener("load", () => {
         resolution: [width / columns, height / rows],
       };
     })();
-
-    const playerObject: RendererObject = {
-      id: "player",
-      position: game.player_position,
-      data: [
-        [0, 0, 0],
-        [0, 1, 0],
-        [1, 1, 0],
-        [1, 0, 0],
-      ],
-      color: [100, 100, 255, 1],
-      texture: await textures[2],
-      scale: [1, 1],
-      rotation: [0, 0, 0],
-      type: RendererObjectType.Filled,
-    };
-    const [blockObjects, targetObjects, boxObjects] = (
-      game.objects_positions as [number, number][][]
-    ).map(
-      (group, groupIndex) =>
-        group.map((position, objectIndex) => {
-          const _default = {
-            position,
-            data: [
-              [0, 0, 0],
-              [0, 1, 0],
-              [1, 1, 0],
-              [1, 0, 0],
-            ],
-            scale: [1, 1],
-            rotation: [0, 0, 0],
-            type: RendererObjectType.Filled,
-          };
-
-          switch (groupIndex) {
-            case 0:
-              return {
-                id: `block-${objectIndex}`,
-                color: [125, 125, 125, 1],
-                texture: textures[0],
-                ..._default,
-              };
-
-            case 1:
-              return {
-                id: `target-${objectIndex}`,
-                color: [0, 0, 0, 1],
-                ..._default,
-              };
-
-            case 2:
-              return {
-                id: `box-${objectIndex}`,
-                color: [200, 150, 0, 1],
-                texture: textures[1],
-                ..._default,
-              };
-
-            default:
-              break;
-          }
-        }) as RendererObject[]
-    );
-    const boxLineObjects: RendererObject[] = boxObjects.map(
-      (object, objectIndex) => {
-        return {
-          ...object,
-          id: `box-line-${objectIndex}`,
-          data: [
-            [0, 0, 0],
-            [1, 1, 0],
-            [0, 1, 0],
-            [1, 0, 0],
-          ],
-          color: [0, 0, 0, 1],
-          type: RendererObjectType.Lines,
-        };
-      }
-    );
 
     const eventObjects: EventObject<any>[] = [
       {
@@ -184,26 +245,31 @@ window.addEventListener("load", () => {
           };
         },
       } as EventObject<Document>,
+      {
+        name: "level-selected",
+        eventType: "change",
+        $target: app.$container.querySelector("#level")!,
+        dataCallback: ($target: HTMLSelectElement, event: InputEvent) => {
+          return {
+            level: "" !== $target.value ? Number($target.value) : null,
+          };
+        },
+      } as EventObject<HTMLSelectElement>,
     ];
 
     // setup
     const renderer = new Renderer2D(
       app.$container.querySelector("#scene")!,
-      [...blockObjects, ...targetObjects].reduce((_result, _object) => {
-        _result[_object.id] = _object;
-
-        return _result;
-      }, {} as any),
       rendererOptions
     );
     const eventsManager = new EventsManager(eventObjects);
     const engine = new Engine(renderer);
 
-    // bind
-    [playerObject, ...boxObjects, ...boxLineObjects].map((object) =>
-      renderer.add(object)
-    );
+    //
+    [...blocks, ...targets].map((obj) => renderer.addStatic(obj));
+    [player, ...boxes, ...boxLines].map((object) => renderer.add(object));
 
+    //
     eventsManager.addEventListener(eventObjects[0].name, (data: any) => {
       if (!data.position) {
         return;
@@ -243,15 +309,13 @@ window.addEventListener("load", () => {
         const updated = game.update_player_position(positionOffset);
 
         if (updated) {
-          playerObject.position = game.player_position;
+          player.position = game.player_position;
 
           // maybe expensive
           [...Array(game.objects_positions[2].length).keys()].map(
             (boxIndex) => {
-              boxObjects[boxIndex].position =
-                game.objects_positions[2][boxIndex];
-              boxLineObjects[boxIndex].position =
-                game.objects_positions[2][boxIndex];
+              boxes[boxIndex].position = game.objects_positions[2][boxIndex];
+              boxLines[boxIndex].position = game.objects_positions[2][boxIndex];
             }
           );
 
@@ -270,6 +334,13 @@ window.addEventListener("load", () => {
           );
         }
       }
+    });
+    eventsManager.addEventListener(eventObjects[2].name, (data: any) => {
+      if (null == data.level) {
+        return;
+      }
+
+      console.log("level-selected:", data.level);
     });
 
     // loop

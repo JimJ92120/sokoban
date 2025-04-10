@@ -34,16 +34,13 @@ class Renderer2D {
   private staticObjects: RendererObjectRecord = {};
   private background: ImageData | null = null;
 
-  constructor(
-    $canvas: HTMLCanvasElement,
-    staticObjects: RendererObjectRecord,
-    options: RendererOptions
-  ) {
+  constructor($canvas: HTMLCanvasElement, options: RendererOptions) {
     this.$canvas = $canvas;
     this.context = this.$canvas.getContext("2d")!;
     this.$shadow = document.createElement("canvas");
-    this.shadowContext = this.$shadow.getContext("2d")!;
-    this.staticObjects = staticObjects;
+    this.shadowContext = this.$shadow.getContext("2d", {
+      willReadFrequently: true,
+    })!;
     this.options = options;
 
     this.setCanvas();
@@ -77,6 +74,31 @@ class Renderer2D {
     }
 
     delete this.objects[objectId];
+
+    return true;
+  }
+
+  addStatic(object: RendererObject): boolean {
+    if (object.id in this.staticObjects) {
+      console.error(`object ${object.id} already added`);
+
+      return false;
+    }
+
+    this.staticObjects[object.id] = object;
+    this.setBackground();
+
+    return true;
+  }
+
+  removeStatic(objectId: string): boolean {
+    if (!(objectId in this.staticObjects)) {
+      console.error(`object ${objectId} not added`);
+
+      return false;
+    }
+
+    delete this.staticObjects[objectId];
 
     return true;
   }
