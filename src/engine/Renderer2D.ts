@@ -17,6 +17,7 @@ type RendererObject = {
   rotation: Vec3;
   type: RendererObjectType;
 };
+type RendererObjectRecord = { [key: string]: RendererObject };
 enum RendererObjectType {
   Lines,
   Filled,
@@ -25,23 +26,35 @@ enum RendererObjectType {
 class Renderer2D {
   readonly options: RendererOptions;
   private $canvas: HTMLCanvasElement;
+  private $shadow: HTMLCanvasElement;
   private context: CanvasRenderingContext2D;
+  private shadowContext: CanvasRenderingContext2D;
   //
-  private objects: { [key: string]: RendererObject } = {};
+  private objects: RendererObjectRecord = {};
+  private staticObjects: RendererObjectRecord = {};
+  private background: ImageData | null = null;
 
-  constructor($canvas: HTMLCanvasElement, options: RendererOptions) {
+  constructor(
+    $canvas: HTMLCanvasElement,
+    staticObjects: RendererObjectRecord,
+    options: RendererOptions
+  ) {
     this.$canvas = $canvas;
     this.context = this.$canvas.getContext("2d")!;
+    this.$shadow = document.createElement("canvas");
+    this.shadowContext = this.$shadow.getContext("2d")!;
+    this.staticObjects = staticObjects;
     this.options = options;
 
     this.setCanvas();
+    this.setBackground();
     this.clear();
   }
 
   render(): void {
     this.clear();
-    this.renderScene();
-    this.renderObjects();
+    this.renderBackground(this.context);
+    this.renderObjects(this.context, this.objects);
   }
 
   add(object: RendererObject): boolean {
@@ -71,9 +84,22 @@ class Renderer2D {
   private setCanvas(): void {
     const { width, height, backgroundColor } = this.options;
 
-    this.$canvas.width = width;
-    this.$canvas.height = height;
-    this.$canvas.style.backgroundColor = this.rgba(backgroundColor);
+    [this.$canvas, this.$shadow].map(($element) => {
+      $element.width = width;
+      $element.height = height;
+      $element.style.backgroundColor = this.rgba(backgroundColor);
+    });
+  }
+
+  private setBackground(): void {
+    const { width, height } = this.options;
+
+    this.shadowContext.clearRect(0, 0, width, height);
+
+    this.renderScene(this.shadowContext);
+    this.renderObjects(this.shadowContext, this.staticObjects);
+
+    this.background = this.shadowContext.getImageData(0, 0, width, height);
   }
 
   private clear(): void {
@@ -87,49 +113,55 @@ class Renderer2D {
   }
 
   //
-  private renderScene(): void {
+  private renderScene(context: CanvasRenderingContext2D): void {
     const { width, height, resolution } = this.options;
     const dimension: Vec2 = [width / resolution[0], height / resolution[1]];
 
-    this.context.strokeStyle = this.rgba([0, 0, 0, 1]);
-    this.context.lineWidth = 0.1;
-    this.context.beginPath();
+    context.strokeStyle = this.rgba([0, 0, 0, 1]);
+    context.lineWidth = 0.1;
+    context.beginPath();
 
     [...Array(dimension[1] - 1).keys()].map((rowIndex) => {
-      this.context.moveTo(0, (rowIndex + 1) * resolution[1]);
-      this.context.lineTo(width, (rowIndex + 1) * resolution[1]);
+      context.moveTo(0, (rowIndex + 1) * resolution[1]);
+      context.lineTo(width, (rowIndex + 1) * resolution[1]);
 
       [...Array(dimension[0] - 1).keys()].map((columnIndex) => {
-        this.context.moveTo((columnIndex + 1) * resolution[0], 0);
-        this.context.lineTo((columnIndex + 1) * resolution[0], height);
+        context.moveTo((columnIndex + 1) * resolution[0], 0);
+        context.lineTo((columnIndex + 1) * resolution[0], height);
       });
     });
 
-    this.context.stroke();
+    context.stroke();
   }
 
-  private renderObjects(): void {
+  private renderBackground(context: CanvasRenderingContext2D): void {
+    if (this.background) {
+      context.putImageData(this.background, 0, 0);
+    }
+  }
+
+  private renderObjects(
+    context: CanvasRenderingContext2D,
+    objects: RendererObjectRecord
+  ): void {
     const { resolution } = this.options;
 
-    Object.keys(this.objects).map((objectId) => {
-      const _object = this.objects[objectId];
+    Object.keys(objects).map((objectId) => {
+      const _object = objects[objectId];
       const { position, data, color, scale, type, rotation } = _object;
       const isLine = RendererObjectType.Lines === type;
       let max: Vec2 = [0, 0];
 
-      this.context[isLine ? "strokeStyle" : "fillStyle"] = this.rgba(color);
+      context[isLine ? "strokeStyle" : "fillStyle"] = this.rgba(color);
 
-      this.context.beginPath();
+      context.beginPath();
       this.rotate(data, rotation).map((vertex, index) => {
         const _position: Vec2 = [
           position[0] * resolution[0] + vertex[0] * scale[0] * resolution[0],
           position[1] * resolution[1] + vertex[1] * scale[1] * resolution[1],
         ];
 
-        this.context[0 === index ? "moveTo" : "lineTo"](
-          _position[0],
-          _position[1]
-        );
+        context[0 === index ? "moveTo" : "lineTo"](_position[0], _position[1]);
 
         if (max[0] < _position[0]) {
           max[0] = _position[0];
@@ -140,7 +172,7 @@ class Renderer2D {
         }
       });
 
-      this.context[isLine ? "stroke" : "fill"]();
+      context[isLine ? "stroke" : "fill"]();
 
       if (_object.texture) {
         let _position: Vec2 = [
@@ -148,7 +180,7 @@ class Renderer2D {
           position[1] * resolution[1],
         ];
 
-        this.context.drawImage(
+        context.drawImage(
           _object.texture,
           _position[0],
           _position[1],

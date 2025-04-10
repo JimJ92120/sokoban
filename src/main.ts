@@ -42,8 +42,6 @@ window.addEventListener("load", () => {
       "./assets/box.png",
       "./assets/player.png",
     ]);
-    console.log(textures);
-    console.log("ok");
 
     const rendererOptions: RendererOptions = (() => {
       const width = 500;
@@ -104,7 +102,7 @@ window.addEventListener("load", () => {
             case 1:
               return {
                 id: `target-${objectIndex}`,
-                color: [250, 250, 200, 1],
+                color: [0, 0, 0, 1],
                 ..._default,
               };
 
@@ -191,19 +189,20 @@ window.addEventListener("load", () => {
     // setup
     const renderer = new Renderer2D(
       app.$container.querySelector("#scene")!,
+      [...blockObjects, ...targetObjects].reduce((_result, _object) => {
+        _result[_object.id] = _object;
+
+        return _result;
+      }, {} as any),
       rendererOptions
     );
     const eventsManager = new EventsManager(eventObjects);
     const engine = new Engine(renderer);
 
     // bind
-    [
-      playerObject,
-      ...blockObjects,
-      ...targetObjects,
-      ...boxObjects,
-      ...boxLineObjects,
-    ].map((object) => renderer.add(object));
+    [playerObject, ...boxObjects, ...boxLineObjects].map((object) =>
+      renderer.add(object)
+    );
 
     eventsManager.addEventListener(eventObjects[0].name, (data: any) => {
       if (!data.position) {
