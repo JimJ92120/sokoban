@@ -32,6 +32,11 @@ impl Game {
     }
 
     #[wasm_bindgen(getter)]
+    pub fn level(&self) -> JsValue {
+        serde_wasm_bindgen::to_value(&self.sokoban.level().clone()).unwrap()
+    }
+
+    #[wasm_bindgen(getter)]
     pub fn is_complete(&self) -> JsValue {
         serde_wasm_bindgen::to_value(&self.sokoban.is_complete().clone()).unwrap()
     }
@@ -52,5 +57,12 @@ impl Game {
         let position: [isize; 2] = serde_wasm_bindgen::from_value(position).unwrap();
 
         self.sokoban.update_player_position(position)
+    }
+
+    #[wasm_bindgen]
+    pub fn update_level(&mut self, new_level: JsValue) -> bool {
+        let new_level: usize = serde_wasm_bindgen::from_value(new_level).unwrap();
+
+        self.sokoban.update_level(new_level)
     }
 }

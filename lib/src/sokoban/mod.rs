@@ -14,6 +14,8 @@ type Position = [usize; 2];
 pub struct Sokoban {
     player_position: Position,
     board: Board,
+    level: usize,
+    level_count: usize,
     is_complete: bool,
     move_count: usize,
 }
@@ -21,9 +23,13 @@ pub struct Sokoban {
 // missing checks for position in range
 impl Sokoban {
     pub fn new() -> Self {
+        let level: usize = 0;
+
         Self {
             player_position: [4, 4],
-            board: Sokoban::new_board(),
+            board: Sokoban::new_board(level),
+            level,
+            level_count: 2,
             is_complete: false,
             move_count: 0,
         }
@@ -36,6 +42,10 @@ impl Sokoban {
 
     pub fn player_position(&self) -> Position {
         self.player_position.clone()
+    }
+
+    pub fn level(&self) -> usize {
+        self.level.clone()
     }
 
     pub fn is_complete(&self) -> bool {
@@ -68,24 +78,39 @@ impl Sokoban {
     }
 
     // static
-    fn new_board() -> Board {
+    fn new_board(board_id: usize) -> Board {
         // let columns = 10;
         // let rows = 10;
 
         // let row: Vec<usize> = (0..columns).into_iter().map(|_| 0).collect();
 
         // (0..rows).into_iter().map(|_| row.clone()).collect()
-        vec![
-            vec![1, 1, 1, 1, 1, 1, 1, 1, 1],
-            vec![1, 2, 0, 0, 1, 1, 1, 2, 1],
-            vec![1, 0, 0, 0, 0, 1, 1, 0, 1],
-            vec![1, 1, 0, 0, 0, 0, 3, 0, 1],
-            vec![1, 1, 3, 0, 0, 0, 0, 0, 1],
-            vec![1, 0, 0, 1, 0, 0, 3, 0, 1],
-            vec![1, 0, 1, 1, 0, 0, 1, 1, 1],
-            vec![1, 0, 0, 0, 0, 0, 2, 1, 1],
-            vec![1, 1, 1, 1, 1, 1, 1, 1, 1],
-        ]
+        let boards: Vec<Board> = vec![
+            vec![
+                vec![1, 1, 1, 1, 1, 1, 1, 1, 1],
+                vec![1, 2, 0, 0, 1, 1, 1, 2, 1],
+                vec![1, 0, 0, 0, 0, 1, 1, 0, 1],
+                vec![1, 1, 0, 0, 0, 0, 3, 0, 1],
+                vec![1, 1, 3, 0, 0, 0, 0, 0, 1],
+                vec![1, 0, 0, 1, 0, 0, 3, 0, 1],
+                vec![1, 0, 1, 1, 0, 0, 1, 1, 1],
+                vec![1, 0, 0, 0, 0, 0, 2, 1, 1],
+                vec![1, 1, 1, 1, 1, 1, 1, 1, 1],
+            ],
+            vec![
+                vec![1, 1, 1, 1, 1, 1, 1, 1, 1],
+                vec![1, 1, 2, 0, 1, 2, 1, 1, 1],
+                vec![1, 0, 0, 1, 1, 0, 1, 1, 1],
+                vec![1, 0, 0, 0, 3, 0, 1, 0, 1],
+                vec![1, 0, 3, 0, 0, 3, 0, 0, 1],
+                vec![1, 1, 0, 1, 0, 0, 0, 0, 1],
+                vec![1, 1, 1, 1, 0, 0, 0, 1, 1],
+                vec![1, 1, 2, 0, 0, 0, 1, 1, 1],
+                vec![1, 1, 1, 1, 1, 1, 1, 1, 1],
+            ],
+        ];
+
+        boards[board_id].clone()
     }
 
     // pub
@@ -133,6 +158,20 @@ impl Sokoban {
 
         self.player_position = [new_position[0], new_position[1]];
         self.move_count += 1;
+
+        true
+    }
+
+    pub fn update_level(&mut self, new_level: usize) -> bool {
+        if 0 > new_level || self.level_count <= new_level || self.level == new_level {
+            return false;
+        }
+
+        self.level = new_level;
+        self.board = Sokoban::new_board(self.level);
+        self.player_position = [4, 4];
+        self.move_count = 0;
+        self.is_complete = false;
 
         true
     }
