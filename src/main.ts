@@ -330,7 +330,7 @@ window.addEventListener("load", () => {
 
           if (game.is_complete) {
             setTimeout(() => {
-              engine.stop();
+              // engine.stop();
 
               alert("Finished!");
             }, 100);
