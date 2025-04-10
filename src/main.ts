@@ -173,16 +173,6 @@ window.addEventListener("load", () => {
       box: [200, 150, 0, 1], // orange
       boxLine: [0, 0, 0, 1],
     };
-
-    const { player, blocks, targets, boxes, boxLines } = AllObjects(
-      game.player_position,
-      game.objects_positions[0],
-      game.objects_positions[1],
-      game.objects_positions[2],
-      colors,
-      textures
-    );
-
     const rendererOptions: RendererOptions = (() => {
       const width = 500;
       const height = 500;
@@ -196,7 +186,6 @@ window.addEventListener("load", () => {
         resolution: [width / columns, height / rows],
       };
     })();
-
     const eventObjects: EventObject<any>[] = [
       {
         name: "test-click",
@@ -251,7 +240,10 @@ window.addEventListener("load", () => {
         $target: app.$container.querySelector("#level")!,
         dataCallback: ($target: HTMLSelectElement, event: InputEvent) => {
           return {
-            level: "" !== $target.value ? Number($target.value) : null,
+            level:
+              "" !== $target.value && !isNaN(Number($target.value))
+                ? Number($target.value)
+                : null,
           };
         },
       } as EventObject<HTMLSelectElement>,
@@ -265,11 +257,26 @@ window.addEventListener("load", () => {
     const eventsManager = new EventsManager(eventObjects);
     const engine = new Engine(renderer);
 
-    //
-    [...blocks, ...targets].map((obj) => renderer.addStatic(obj));
-    [player, ...boxes, ...boxLines].map((object) => renderer.add(object));
+    // objects
+    const setObjects = (): AllObjectsData => {
+      const _allObjects = AllObjects(
+        game.player_position,
+        game.objects_positions[0],
+        game.objects_positions[1],
+        game.objects_positions[2],
+        colors,
+        textures
+      );
+      const { player, blocks, targets, boxes, boxLines } = _allObjects;
 
-    //
+      [...blocks, ...targets].map((obj) => renderer.addStatic(obj));
+      [player, ...boxes, ...boxLines].map((object) => renderer.add(object));
+
+      return _allObjects;
+    };
+    let allObjects = setObjects();
+
+    // events
     eventsManager.addEventListener(eventObjects[0].name, (data: any) => {
       if (!data.position) {
         return;
@@ -309,13 +316,15 @@ window.addEventListener("load", () => {
         const updated = game.update_player_position(positionOffset);
 
         if (updated) {
-          player.position = game.player_position;
+          allObjects.player.position = game.player_position;
 
           // maybe expensive
           [...Array(game.objects_positions[2].length).keys()].map(
             (boxIndex) => {
-              boxes[boxIndex].position = game.objects_positions[2][boxIndex];
-              boxLines[boxIndex].position = game.objects_positions[2][boxIndex];
+              allObjects.boxes[boxIndex].position =
+                game.objects_positions[2][boxIndex];
+              allObjects.boxLines[boxIndex].position =
+                game.objects_positions[2][boxIndex];
             }
           );
 
@@ -340,13 +349,24 @@ window.addEventListener("load", () => {
         return;
       }
 
-      console.log("level-selected:", data.level);
+      if (game.update_level !== data.level) {
+        if (game.update_level(data.level)) {
+          renderer.reset();
+          allObjects = setObjects();
+          renderer.setBackground();
+
+          eventObjects[2].$target.blur();
+        } else {
+          console.error(`update level from ${game.level} to ${data.level} `);
+        }
+      }
     });
 
     // loop
     engine.start(() => {
       app.debug(
-        `move count: ${game.move_count}\n\n` +
+        `level: ${game.level + 1}\n` +
+          `move count: ${game.move_count}\n\n` +
           (game.board as number[][]).reduce(
             (_result, row) => _result + row.join(" ") + "\n",
             ""

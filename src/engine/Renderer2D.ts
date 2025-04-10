@@ -103,6 +103,27 @@ class Renderer2D {
     return true;
   }
 
+  reset(): void {
+    this.objects = {};
+    this.staticObjects = {};
+    this.background = null;
+
+    this.context.reset();
+    this.clear();
+  }
+
+  setBackground(): void {
+    const { width, height } = this.options;
+
+    this.shadowContext.reset();
+    this.shadowContext.clearRect(0, 0, width, height);
+
+    this.renderScene(this.shadowContext);
+    this.renderObjects(this.shadowContext, this.staticObjects);
+
+    this.background = this.shadowContext.getImageData(0, 0, width, height);
+  }
+
   private setCanvas(): void {
     const { width, height, backgroundColor } = this.options;
 
@@ -111,17 +132,6 @@ class Renderer2D {
       $element.height = height;
       $element.style.backgroundColor = this.rgba(backgroundColor);
     });
-  }
-
-  private setBackground(): void {
-    const { width, height } = this.options;
-
-    this.shadowContext.clearRect(0, 0, width, height);
-
-    this.renderScene(this.shadowContext);
-    this.renderObjects(this.shadowContext, this.staticObjects);
-
-    this.background = this.shadowContext.getImageData(0, 0, width, height);
   }
 
   private clear(): void {

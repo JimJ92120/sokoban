@@ -14,21 +14,27 @@ class App {
 
   <canvas id="scene"></canvas>
 
-  <p>
-    <pre id="debug"></pre>
-  </p>
-
   <div>
-    <label>Level</label>
+    <label>Select a level:</label>
+    <br />
     <select id="level">
-      <option>-- select a level --</option>
-      ${[...Array(5).keys()].reduce(
+      ${[...Array(2).keys()].reduce(
         (_result, index) =>
           _result + `<option value=${index}>level ${index + 1}</option>`,
         ""
       )}
     </select>
   </div>
+
+  <p>
+    <pre id="debug"></pre>
+  </p>
+
+  <style>
+    #scene {
+      margin-bottom: 1rem;
+    }
+  </style>
     `;
 
     this.$debug = this.$container.querySelector("#debug");
